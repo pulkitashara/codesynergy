@@ -1,8 +1,12 @@
 import '/auth/firebase_auth/auth_util.dart';
+import '/backend/backend.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/flutter_flow_widgets.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'auth_page_model.dart';
@@ -19,6 +23,7 @@ class _AuthPageWidgetState extends State<AuthPageWidget> {
   late AuthPageModel _model;
 
   final scaffoldKey = GlobalKey<ScaffoldState>();
+  LatLng? currentUserLocationValue;
 
   @override
   void initState() {
@@ -26,7 +31,10 @@ class _AuthPageWidgetState extends State<AuthPageWidget> {
     _model = createModel(context, () => AuthPageModel());
 
     _model.passwordTextController ??= TextEditingController();
+    _model.textFieldFocusNode1 ??= FocusNode();
+
     _model.emailTextController ??= TextEditingController();
+    _model.textFieldFocusNode2 ??= FocusNode();
   }
 
   @override
@@ -38,8 +46,19 @@ class _AuthPageWidgetState extends State<AuthPageWidget> {
 
   @override
   Widget build(BuildContext context) {
+    if (isiOS) {
+      SystemChrome.setSystemUIOverlayStyle(
+        SystemUiOverlayStyle(
+          statusBarBrightness: Theme.of(context).brightness,
+          systemStatusBarContrastEnforced: true,
+        ),
+      );
+    }
+
     return GestureDetector(
-      onTap: () => FocusScope.of(context).requestFocus(_model.unfocusNode),
+      onTap: () => _model.unfocusNode.canRequestFocus
+          ? FocusScope.of(context).requestFocus(_model.unfocusNode)
+          : FocusScope.of(context).unfocus(),
       child: Scaffold(
         key: scaffoldKey,
         backgroundColor: Color(0xFFC62C2C),
@@ -47,17 +66,20 @@ class _AuthPageWidgetState extends State<AuthPageWidget> {
           top: true,
           child: Stack(
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8.0),
-                child: Image.asset(
-                  'assets/images/bg.png',
-                  width: 416.0,
-                  height: 899.0,
-                  fit: BoxFit.cover,
+              Align(
+                alignment: AlignmentDirectional(0.0, 0.0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8.0),
+                  child: Image.asset(
+                    'assets/images/bg.png',
+                    width: 416.0,
+                    height: 1047.0,
+                    fit: BoxFit.fill,
+                  ),
                 ),
               ),
               Align(
-                alignment: AlignmentDirectional(-0.82, -0.99),
+                alignment: AlignmentDirectional(-0.77, -0.96),
                 child: Text(
                   'Employee\nLogin',
                   style: GoogleFonts.getFont(
@@ -72,6 +94,8 @@ class _AuthPageWidgetState extends State<AuthPageWidget> {
                 alignment: AlignmentDirectional(0.0, 0.65),
                 child: FFButtonWidget(
                   onPressed: () async {
+                    currentUserLocationValue = await getCurrentUserLocation(
+                        defaultLocation: LatLng(0.0, 0.0));
                     GoRouter.of(context).prepareAuthEvent();
 
                     final user = await authManager.signInWithEmail(
@@ -82,6 +106,11 @@ class _AuthPageWidgetState extends State<AuthPageWidget> {
                     if (user == null) {
                       return;
                     }
+
+                    await LocaRecord.createDoc(currentUserReference!)
+                        .set(createLocaRecordData(
+                      location: currentUserLocationValue,
+                    ));
 
                     context.goNamedAuth('HomePage', context.mounted);
                   },
@@ -117,38 +146,43 @@ class _AuthPageWidgetState extends State<AuthPageWidget> {
                     width: 279.0,
                     child: TextFormField(
                       controller: _model.passwordTextController,
+                      focusNode: _model.textFieldFocusNode1,
+                      autofillHints: [AutofillHints.password],
+                      textInputAction: TextInputAction.next,
                       obscureText: !_model.passwordVisibility,
                       decoration: InputDecoration(
                         labelText: 'Password',
                         labelStyle:
                             FlutterFlowTheme.of(context).labelMedium.override(
                                   fontFamily: 'Readex Pro',
+                                  color: Colors.black,
                                   fontSize: 24.0,
                                   fontWeight: FontWeight.w600,
                                 ),
+                        hintText: 'Numeric password only',
                         hintStyle: FlutterFlowTheme.of(context).labelMedium,
-                        enabledBorder: UnderlineInputBorder(
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: FlutterFlowTheme.of(context).secondaryText,
+                            width: 2.0,
+                          ),
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                        focusedBorder: OutlineInputBorder(
                           borderSide: BorderSide(
                             color: Color(0xFFC62C2C),
                             width: 2.0,
                           ),
                           borderRadius: BorderRadius.circular(8.0),
                         ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(
-                            color: FlutterFlowTheme.of(context).primary,
-                            width: 2.0,
-                          ),
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                        errorBorder: UnderlineInputBorder(
+                        errorBorder: OutlineInputBorder(
                           borderSide: BorderSide(
                             color: FlutterFlowTheme.of(context).error,
                             width: 2.0,
                           ),
                           borderRadius: BorderRadius.circular(8.0),
                         ),
-                        focusedErrorBorder: UnderlineInputBorder(
+                        focusedErrorBorder: OutlineInputBorder(
                           borderSide: BorderSide(
                             color: FlutterFlowTheme.of(context).error,
                             width: 2.0,
@@ -165,13 +199,22 @@ class _AuthPageWidgetState extends State<AuthPageWidget> {
                             _model.passwordVisibility
                                 ? Icons.visibility_outlined
                                 : Icons.visibility_off_outlined,
+                            color: Color(0xFFC62C2C),
                             size: 22,
                           ),
                         ),
                       ),
-                      style: FlutterFlowTheme.of(context).bodyMedium,
+                      style: FlutterFlowTheme.of(context).bodyMedium.override(
+                            fontFamily: 'Readex Pro',
+                            color: Colors.black,
+                          ),
+                      keyboardType: TextInputType.number,
+                      cursorColor: Colors.black,
                       validator: _model.passwordTextControllerValidator
                           .asValidator(context),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp('[0-9]'))
+                      ],
                     ),
                   ),
                 ),
@@ -184,39 +227,44 @@ class _AuthPageWidgetState extends State<AuthPageWidget> {
                     width: 279.0,
                     child: TextFormField(
                       controller: _model.emailTextController,
+                      focusNode: _model.textFieldFocusNode2,
                       autofocus: true,
+                      autofillHints: [AutofillHints.email],
+                      textInputAction: TextInputAction.next,
                       obscureText: false,
                       decoration: InputDecoration(
                         labelText: 'Employee ID',
                         labelStyle:
                             FlutterFlowTheme.of(context).labelMedium.override(
                                   fontFamily: 'Readex Pro',
+                                  color: Colors.black,
                                   fontSize: 24.0,
                                   fontWeight: FontWeight.w600,
                                 ),
+                        hintText: 'Enter your email id',
                         hintStyle: FlutterFlowTheme.of(context).labelMedium,
-                        enabledBorder: UnderlineInputBorder(
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: FlutterFlowTheme.of(context).secondaryText,
+                            width: 2.0,
+                          ),
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                        focusedBorder: OutlineInputBorder(
                           borderSide: BorderSide(
                             color: Color(0xFFC62C2C),
                             width: 2.0,
                           ),
                           borderRadius: BorderRadius.circular(8.0),
                         ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(
-                            color: FlutterFlowTheme.of(context).primary,
-                            width: 2.0,
-                          ),
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                        errorBorder: UnderlineInputBorder(
+                        errorBorder: OutlineInputBorder(
                           borderSide: BorderSide(
                             color: FlutterFlowTheme.of(context).error,
                             width: 2.0,
                           ),
                           borderRadius: BorderRadius.circular(8.0),
                         ),
-                        focusedErrorBorder: UnderlineInputBorder(
+                        focusedErrorBorder: OutlineInputBorder(
                           borderSide: BorderSide(
                             color: FlutterFlowTheme.of(context).error,
                             width: 2.0,
@@ -224,7 +272,11 @@ class _AuthPageWidgetState extends State<AuthPageWidget> {
                           borderRadius: BorderRadius.circular(8.0),
                         ),
                       ),
-                      style: FlutterFlowTheme.of(context).bodyMedium,
+                      style: FlutterFlowTheme.of(context).bodyMedium.override(
+                            fontFamily: 'Readex Pro',
+                            color: Colors.black,
+                          ),
+                      cursorColor: Colors.black,
                       validator: _model.emailTextControllerValidator
                           .asValidator(context),
                     ),

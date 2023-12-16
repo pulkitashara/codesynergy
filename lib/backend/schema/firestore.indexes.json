@@ -1,3 +1,18 @@
 {
-  "indexes": []
+  "indexes": [
+    {
+      "collectionGroup": "todo",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "task",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "desp",
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ]
 }
